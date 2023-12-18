@@ -59,9 +59,8 @@ public class MainActivity extends AppCompatActivity {
             public void onPostExecute(String result) {
                 tvStatus.setText(getString(R.string.data_loaded) + result);
             }
-        //}.execute(Constants.GUNFIRE_URL);
-        //}.execute(Constants.FLOATRATES_API_URL);
-        }.execute(Constants.METEOLT_API_URL);
+
+        }.execute(Constants.FLOATRATES_API_URL);
     }
 
     public void getDataByThread() {
