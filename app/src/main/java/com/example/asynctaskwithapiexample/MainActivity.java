@@ -1,21 +1,19 @@
 package com.example.asynctaskwithapiexample;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.ListAdapter;
 import android.widget.ListView;
-import android.widget.Switch;
+import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.asynctaskwithapiexample.utilities.ApiDataReader;
-import com.example.asynctaskwithapiexample.utilities.AsyncDataLoader;
 import com.example.asynctaskwithapiexample.utilities.Constants;
 
 import java.io.IOException;
@@ -26,7 +24,8 @@ public class MainActivity extends AppCompatActivity {
     private ListView lvItems;
     private TextView tvStatus;
     private ArrayAdapter listAdapter;
-    private Switch swUseAsyncTask;
+    private List<String> listOfCurrencies; // Retained the original list of currencies
+    private SearchView searchView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,46 +34,58 @@ public class MainActivity extends AppCompatActivity {
 
         this.lvItems = findViewById(R.id.lv_items);
         this.tvStatus = findViewById(R.id.tv_status);
-        this.swUseAsyncTask = findViewById(R.id.sw_use_async_task);
+        this.listOfCurrencies = new ArrayList<>();
 
         this.listAdapter = new ArrayAdapter<>(getApplicationContext(), android.R.layout.simple_list_item_1, new ArrayList<>());
         this.lvItems.setAdapter(this.listAdapter);
     }
 
-    public void onBtnGetDataClick(View view) {
-        this.tvStatus.setText(R.string.loading_data);
-        if(this.swUseAsyncTask.isChecked()){
-            getDataByAsyncTask();
-            Toast.makeText(this, R.string.msg_using_async_task, Toast.LENGTH_LONG).show();
-        }
-        else{
-            getDataByThread();
-            Toast.makeText(this, R.string.msg_using_thread, Toast.LENGTH_LONG).show();
-        }
-    }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_search, menu);
 
-    public void getDataByAsyncTask(){
-        new AsyncDataLoader() {
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        searchView = (SearchView) searchItem.getActionView();
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
-            public void onPostExecute(String result) {
-                tvStatus.setText(getString(R.string.data_loaded) + result);
+            public boolean onQueryTextSubmit(String query) {
+                // Handle search query submission (if needed)
+                return false;
             }
 
-        }.execute(Constants.FLOATRATES_API_URL);
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                // Handle search query text change
+                filterCurrencyList(newText);
+                return true;
+            }
+        });
+
+        return super.onCreateOptionsMenu(menu);
     }
 
-    public void getDataByThread() {
+    public void onBtnGetDataClick(View view) {
+        fetchData();
+    }
+
+    private void fetchData() {
+        fetchDataByThread();
+        Toast.makeText(this, R.string.msg_using_thread, Toast.LENGTH_LONG).show();
+    }
+
+    public void fetchDataByThread() {
         this.tvStatus.setText(R.string.loading_data);
-        Runnable getDataAndDisplayRunnable = new Runnable() {
+        Runnable fetchDataAndDisplayRunnable = new Runnable() {
             @Override
             public void run() {
                 try {
                     final String result = ApiDataReader.getValuesFromApi(Constants.FLOATRATES_API_URL);
-                    //final String result = ApiDataReader.getValuesFromApi(Constants.METEOLT_API_URL);
                     Runnable updateUIRunnable = new Runnable() {
                         @Override
                         public void run() {
-                            tvStatus.setText(getString(R.string.data_loaded) + result);
+                            // Updated: Load all data initially, but do not filter here
+                            listOfCurrencies = parseCurrencyData(result);
+                            filterCurrencyList(searchView.getQuery().toString());
                         }
                     };
                     runOnUiThread(updateUIRunnable);
@@ -84,17 +95,46 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        Thread thread = new Thread(getDataAndDisplayRunnable);
+        Thread thread = new Thread(fetchDataAndDisplayRunnable);
         thread.start();
+        // Removed: Setting status text here; it will be set after data is loaded
+    }
 
-        //with Lambdas --->
-        //        new Thread(() -> {
-        //            try {
-        //                final String result = ApiDataReader.getValuesFromApi(Constants.FLOATRATES_API_URL);
-        //                runOnUiThread(() -> tvStatus.setText(getString(R.string.data_loaded) + result));
-        //            } catch (IOException ex) {
-        //                runOnUiThread(() -> tvStatus.setText("Error occured:" + ex.getMessage()));
-        //            }
-        //        }).start();
+    private List<String> parseCurrencyData(String data) {
+        List<String> currencyList = new ArrayList<>();
+
+        String[] currencyArray = data.split("\n");
+
+        for (String currency : currencyArray) {
+            String[] currencyParts = currency.split(",");
+            if (currencyParts.length == 2) {
+                String currencyName = currencyParts[0].trim();
+                String rate = currencyParts[1].trim();
+
+                currencyList.add(currency);
+            }
+        }
+        return currencyList;
+    }
+
+
+
+    private void filterCurrencyList(String filter) {
+        List<String> filteredList = new ArrayList<>();
+        for (String currency : listOfCurrencies) {
+            if (currency.toLowerCase().contains(filter.toLowerCase())) {
+                filteredList.add(currency);
+            }
+        }
+        updateUI(filteredList);
+    }
+
+
+
+    private void updateUI(List<String> dataList) {
+        listAdapter.clear();
+        listAdapter.addAll(dataList);
+        listAdapter.notifyDataSetChanged();
+        this.tvStatus.setText(R.string.data_loaded); // Moved setting status text here
     }
 }

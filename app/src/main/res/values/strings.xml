@@ -5,4 +5,7 @@
     <string name="msg_using_thread">Using Thread and Runnable</string>
     <string name="data_loaded">Data loaded:\n</string>
     <string name="loading_data">Loading data...\n</string>
+    <string name="enter_currency_name">Enter currency name</string>
+    <string name="nothing_is_happening">Nothing is happening :/</string>
+    <string name="get_data">Get data!</string>
 </resources>
