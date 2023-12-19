@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
         this.lvItems = findViewById(R.id.lv_items);
         this.tvStatus = findViewById(R.id.tv_status);
         this.listOfCurrencies = new ArrayList<>();
